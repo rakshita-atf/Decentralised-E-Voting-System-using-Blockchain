@@ -64,34 +64,6 @@ export default function AdminDashboard() {
     await connect();
   };
 
-  // ── Gate: show connect prompt if wallet not connected ──
-  if (!account) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-8">
-        {wrongNetwork && <WrongNetworkBanner networkName={networkName} />}
-        <div className="bg-white/5 border border-white/10 rounded-3xl p-12 flex flex-col items-center text-center max-w-md w-full backdrop-blur-sm shadow-[0_0_60px_rgba(79,70,229,0.15)]">
-          <div className="w-20 h-20 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(79,70,229,0.3)]">
-            <Shield className="w-10 h-10 text-indigo-400" />
-          </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Admin Dashboard</h1>
-          <p className="text-slate-400 text-sm mb-8">
-            Connect your MetaMask wallet to manage elections, candidates, and voter registration.
-          </p>
-          <button
-            onClick={handleConnect}
-            className="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-all shadow-[0_0_20px_rgba(79,70,229,0.4)] hover:shadow-[0_0_30px_rgba(79,70,229,0.6)] flex items-center justify-center gap-2"
-          >
-            <Wallet className="w-5 h-5" />
-            Connect MetaMask
-          </button>
-          <Link href="/" className="mt-4 text-sm text-slate-500 hover:text-slate-300 transition-colors">
-            ← Back to Home
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   // ── Initialize contracts ──
   useEffect(() => {
     if (!signer || wrongNetwork) return;
@@ -233,6 +205,31 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen p-6 md:p-8 max-w-7xl mx-auto">
       {wrongNetwork && <WrongNetworkBanner networkName={networkName} />}
+
+      {/* ── Not connected: show connect prompt ── */}
+      {!account ? (
+        <div className="min-h-screen flex flex-col items-center justify-center">
+          <div className="bg-white/5 border border-white/10 rounded-3xl p-12 flex flex-col items-center text-center max-w-md w-full backdrop-blur-sm shadow-[0_0_60px_rgba(79,70,229,0.15)]">
+            <div className="w-20 h-20 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(79,70,229,0.3)]">
+              <Shield className="w-10 h-10 text-indigo-400" />
+            </div>
+            <h1 className="text-2xl font-bold text-white mb-2">Admin Dashboard</h1>
+            <p className="text-slate-400 text-sm mb-8">
+              Connect your MetaMask wallet to manage elections, candidates, and voter registration.
+            </p>
+            <button
+              onClick={handleConnect}
+              className="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-all shadow-[0_0_20px_rgba(79,70,229,0.4)] hover:shadow-[0_0_30px_rgba(79,70,229,0.6)] flex items-center justify-center gap-2"
+            >
+              <Wallet className="w-5 h-5" />
+              Connect MetaMask
+            </button>
+            <Link href="/" className="mt-4 text-sm text-slate-500 hover:text-slate-300 transition-colors">
+              ← Back to Home
+            </Link>
+          </div>
+        </div>
+      ) : (<>
       {/* Header */}
       <div className="flex items-center justify-between mb-10">
         <div>
@@ -508,6 +505,7 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+      </>)}
     </div>
   );
 }
