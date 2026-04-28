@@ -1,0 +1,37 @@
+specVersion: 0.0.5
+description: Decentralised E-Voting System Subgraph
+repository: https://github.com/rakshita-atf/Decentralised-E-Voting-System-using-Blockchain
+schema:
+  file: ./schema.graphql
+
+dataSources:
+  - kind: ethereum
+    name: Election
+    network: polygon-amoy
+    source:
+      address: "0x0000000000000000000000000000000000000000" # Replace with deployed address
+      abi: Election
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Election
+        - Candidate
+        - VoteCommit
+        - VoteReveal
+        - ElectionPhaseChange
+      abis:
+        - name: Election
+          file: ../artifacts/contracts/Election.sol/Election.json
+      eventHandlers:
+        - event: CandidateAdded(indexed uint256,string,string)
+          handler: handleCandidateAdded
+        - event: ElectionStateChanged(uint8)
+          handler: handleElectionStateChanged
+        - event: VoteCommitted(indexed address)
+          handler: handleVoteCommitted
+        - event: VoteRevealed(indexed address,indexed uint256,string)
+          handler: handleVoteRevealed
+      file: ./src/mapping.ts

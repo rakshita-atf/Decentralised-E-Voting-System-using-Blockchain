@@ -1,0 +1,51 @@
+# ───────────────────────────────────────────────
+# The Graph — Schema for E-Voting Subgraph
+# ───────────────────────────────────────────────
+
+type ElectionMeta @entity {
+  id: ID!                          # Singleton "election"
+  state: Int!                      # 0=NotStarted, 1=CommitPhase, 2=RevealPhase, 3=Ended
+  candidatesCount: Int!
+  totalCommits: Int!
+  totalVotes: Int!
+  commitDeadline: BigInt
+  revealDeadline: BigInt
+  lastStateChangeBlock: BigInt!
+  lastStateChangeTimestamp: BigInt!
+}
+
+type Candidate @entity {
+  id: ID!                          # candidateId as string
+  candidateId: BigInt!
+  name: String!
+  imageCID: String!
+  voteCount: Int!
+  addedAtBlock: BigInt!
+  addedAtTimestamp: BigInt!
+}
+
+type VoteCommit @entity {
+  id: ID!                          # txHash
+  voter: Bytes!                    # address
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type VoteReveal @entity {
+  id: ID!                          # txHash
+  voter: Bytes!                    # address
+  candidateId: BigInt!
+  candidate: Candidate!
+  ballotProofCID: String!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type ElectionPhaseChange @entity {
+  id: ID!                          # txHash-logIndex
+  newState: Int!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+}
