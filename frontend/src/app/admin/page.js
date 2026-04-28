@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   PlusCircle,
   Shield,
@@ -30,7 +30,9 @@ export default function AdminDashboard() {
 
   // ── Contract state ──
   const [electionContract, setElectionContract] = useState(null);
+  const electionContractRef = useRef(null); // ref avoids stale-closure bugs in async callbacks
   const [sbtContract, setSbtContract] = useState(null);
+  const sbtContractRef = useRef(null);
   const [electionState, setElectionState] = useState(0);
   const [candidates, setCandidates] = useState([]);
   const [timeline, setTimeline] = useState({ commitDeadline: 0, revealDeadline: 0, totalCommits: 0, totalVotes: 0 });
@@ -60,10 +62,12 @@ export default function AdminDashboard() {
     try {
       const election = new ethers.Contract(ELECTION_ADDRESS, ElectionABI, signer);
       setElectionContract(election);
+      electionContractRef.current = election; // keep ref in sync
 
       if (SBT_ADDRESS && SBT_ADDRESS !== "0x0000000000000000000000000000000000000000") {
         const sbt = new ethers.Contract(SBT_ADDRESS, VoterSBTABI, signer);
         setSbtContract(sbt);
+        sbtContractRef.current = sbt; // keep ref in sync
       }
     } catch (err) {
       console.error("Init error:", err);
@@ -72,9 +76,10 @@ export default function AdminDashboard() {
 
   // ── Fetch election data ──
   const fetchData = useCallback(async () => {
-    if (!electionContract) return;
+    const contract = electionContractRef.current; // read from ref to avoid stale closure
+    if (!contract) return;
     try {
-      const tl = await electionContract.getElectionTimeline();
+      const tl = await contract.getElectionTimeline();
       setElectionState(Number(tl.currentState));
       setTimeline({
         commitDeadline: Number(tl._commitDeadline),
@@ -83,21 +88,22 @@ export default function AdminDashboard() {
         totalVotes: Number(tl._totalVotes),
       });
 
-      const count = Number(await electionContract.candidatesCount());
+      const count = Number(await contract.candidatesCount());
       const arr = [];
       for (let i = 1; i <= count; i++) {
-        const c = await electionContract.getCandidate(i);
+        const c = await contract.getCandidate(i);
         arr.push({ id: Number(c.id), name: c.name, imageCID: c.imageCID, voteCount: Number(c.voteCount) });
       }
       setCandidates(arr);
 
-      if (sbtContract) {
-        setTotalVoters(Number(await sbtContract.totalVoters()));
+      const sbt = sbtContractRef.current;
+      if (sbt) {
+        setTotalVoters(Number(await sbt.totalVoters()));
       }
     } catch (err) {
       console.error("Fetch error:", err);
     }
-  }, [electionContract, sbtContract]);
+  }, []); // stable: reads from refs, no state deps needed
 
   useEffect(() => {
     fetchData();
@@ -113,9 +119,14 @@ export default function AdminDashboard() {
   };
 
   const txAction = async (label, fn) => {
+    const contract = electionContractRef.current; // read from ref to get the latest instance
+    if (!contract) {
+      showMsg("error", "Contract not connected. Please connect MetaMask to Hardhat Local (chain 31337) and refresh.");
+      return;
+    }
     setLoading(label);
     try {
-      const tx = await fn();
+      const tx = await fn(contract); // pass contract directly so fn never reads a stale closure
       await tx.wait();
       showMsg("success", `${label} successful!`);
       await fetchData();
@@ -130,31 +141,41 @@ export default function AdminDashboard() {
   const handleAddCandidate = (e) => {
     e.preventDefault();
     if (!newCandidateName.trim()) return;
-    txAction("Add Candidate", () =>
-      electionContract.addCandidate(newCandidateName, newCandidateImage || "none")
+    if (!electionContractRef.current) { showMsg("error", "Contract not connected. Connect MetaMask first."); return; }
+    // Pass contract via argument so the lambda never captures a stale closure
+    const name = newCandidateName;
+    const image = newCandidateImage;
+    txAction("Add Candidate", (c) =>
+      c.addCandidate(name, image || "none")
     ).then(() => { setNewCandidateName(""); setNewCandidateImage(""); });
   };
 
   const handleMintSBT = (e) => {
     e.preventDefault();
     if (!ethers.isAddress(voterAddress)) { showMsg("error", "Invalid wallet address"); return; }
+    const sbt = sbtContractRef.current;
+    if (!sbt) { showMsg("error", "SBT contract not connected."); return; }
+    const addr = voterAddress;
+    const constituency = voterConstituency;
     txAction("Mint Voter SBT", () =>
-      sbtContract.mintVoterToken(voterAddress, voterConstituency || "Unassigned")
+      sbt.mintVoterToken(addr, constituency || "Unassigned")
     ).then(() => { setVoterAddress(""); setVoterConstituency(""); });
   };
 
   const handleStartCommit = () => {
-    txAction("Start Commit Phase", () =>
-      electionContract.startCommitPhase(parseInt(commitDuration), parseInt(revealDuration))
+    const dur1 = parseInt(commitDuration);
+    const dur2 = parseInt(revealDuration);
+    txAction("Start Commit Phase", (c) =>
+      c.startCommitPhase(dur1, dur2)
     );
   };
 
   const handleStartReveal = () => {
-    txAction("Start Reveal Phase", () => electionContract.startRevealPhase());
+    txAction("Start Reveal Phase", (c) => c.startRevealPhase());
   };
 
   const handleEndElection = () => {
-    txAction("End Election", () => electionContract.endElection());
+    txAction("End Election", (c) => c.endElection());
   };
 
   // ── Countdown helper ──
