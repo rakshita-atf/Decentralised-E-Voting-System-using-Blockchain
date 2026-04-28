@@ -54,6 +54,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [showManualSetup, setShowManualSetup] = useState(false);
 
   const ELECTION_ADDRESS = process.env.NEXT_PUBLIC_ELECTION_CONTRACT_ADDRESS;
   const SBT_ADDRESS = process.env.NEXT_PUBLIC_VOTER_SBT_ADDRESS;
@@ -279,30 +280,67 @@ export default function AdminDashboard() {
           <div className="flex-1">
             <p className="text-orange-300 font-semibold text-sm">Wrong Network Detected</p>
             <p className="text-orange-400/80 text-xs mt-1">
-              MetaMask is connected to <span className="font-mono font-bold">{networkName}</span>. Contracts are deployed on{" "}
+              MetaMask is connected to <span className="font-mono font-bold">{networkName}</span>. Contracts require{" "}
               <span className="font-semibold">Hardhat Local (chain 31337)</span> or{" "}
               <span className="font-semibold">Polygon Amoy (chain 80002)</span>.
             </p>
+            {showManualSetup && (
+              <div className="mt-3 p-3 bg-black/30 rounded-lg border border-orange-500/20 text-xs text-orange-300/80 space-y-1">
+                <p className="font-semibold text-orange-300">Add Hardhat Local manually in MetaMask:</p>
+                <p>Network Name: <span className="font-mono text-white">Hardhat Local</span></p>
+                <p>RPC URL: <span className="font-mono text-white">http://127.0.0.1:8545</span></p>
+                <p>Chain ID: <span className="font-mono text-white">31337</span></p>
+                <p>Currency Symbol: <span className="font-mono text-white">ETH</span></p>
+              </div>
+            )}
           </div>
-          <button
-            onClick={async () => {
-              try {
-                await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x7a69" }] });
-              } catch (e) {
-                if (e.code === 4902) {
-                  try {
-                    await window.ethereum.request({
-                      method: "wallet_addEthereumChain",
-                      params: [{ chainId: "0x7a69", chainName: "Hardhat Local", nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 }, rpcUrls: ["http://127.0.0.1:8545"] }],
-                    });
-                  } catch {}
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={async () => {
+                try {
+                  await window.ethereum.request({
+                    method: "wallet_switchEthereumChain",
+                    params: [{ chainId: "0x7a69" }], // 31337
+                  });
+                } catch (e) {
+                  // 4902 = chain not added yet; show manual instructions instead of auto-add
+                  // (MetaMask rejects wallet_addEthereumChain for 31337 due to its own registry)
+                  setShowManualSetup(true);
                 }
-              }
-            }}
-            className="px-4 py-2 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-300 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap"
-          >
-            Switch to Hardhat Local
-          </button>
+              }}
+              className="px-4 py-2 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-300 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap"
+            >
+              Switch to Hardhat Local
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  await window.ethereum.request({
+                    method: "wallet_switchEthereumChain",
+                    params: [{ chainId: "0x13882" }], // Polygon Amoy 80002
+                  });
+                } catch (e) {
+                  if (e.code === 4902) {
+                    try {
+                      await window.ethereum.request({
+                        method: "wallet_addEthereumChain",
+                        params: [{
+                          chainId: "0x13882",
+                          chainName: "Polygon Amoy Testnet",
+                          nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
+                          rpcUrls: ["https://rpc-amoy.polygon.technology"],
+                          blockExplorerUrls: ["https://amoy.polygonscan.com"],
+                        }],
+                      });
+                    } catch {}
+                  }
+                }
+              }}
+              className="px-4 py-2 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-indigo-300 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap"
+            >
+              Switch to Amoy
+            </button>
+          </div>
         </div>
       )}
 

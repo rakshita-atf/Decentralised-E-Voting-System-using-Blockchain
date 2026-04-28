@@ -101,18 +101,22 @@ export function WrongNetworkBanner({ networkName }) {
       });
     } catch (err) {
       if (err.code === 4902) {
-        await window.ethereum.request({
-          method: "wallet_addEthereumChain",
-          params: [
-            {
-              chainId: "0x13882",
-              chainName: "Polygon Amoy Testnet",
-              nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
-              rpcUrls: ["https://rpc-amoy.polygon.technology"],
-              blockExplorerUrls: ["https://amoy.polygonscan.com"],
-            },
-          ],
-        });
+        try {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [
+              {
+                chainId: "0x13882",
+                chainName: "Polygon Amoy Testnet",
+                nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
+                rpcUrls: ["https://rpc-amoy.polygon.technology"],
+                blockExplorerUrls: ["https://amoy.polygonscan.com"],
+              },
+            ],
+          });
+        } catch {
+          // MetaMask may show a native-token-symbol warning — user will confirm or cancel
+        }
       }
     }
   };
