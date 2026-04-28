@@ -34,6 +34,9 @@ export default function AdminDashboard() {
   const electionContractRef = useRef(null); // ref avoids stale-closure bugs in async callbacks
   const [sbtContract, setSbtContract] = useState(null);
   const sbtContractRef = useRef(null);
+  // Refs for booleans that need to be read in async callbacks without stale closures
+  const wrongNetworkRef = useRef(false);
+  const networkNameRef = useRef("");
   const [electionState, setElectionState] = useState(0);
   const [candidates, setCandidates] = useState([]);
   const [timeline, setTimeline] = useState({ commitDeadline: 0, revealDeadline: 0, totalCommits: 0, totalVotes: 0 });
@@ -63,6 +66,19 @@ export default function AdminDashboard() {
     }
     await connect();
   };
+
+  // ── Keep network refs in sync with state ──
+  useEffect(() => {
+    wrongNetworkRef.current = wrongNetwork;
+    networkNameRef.current = networkName;
+    // Clear contracts when network changes to a wrong one
+    if (wrongNetwork) {
+      electionContractRef.current = null;
+      sbtContractRef.current = null;
+      setElectionContract(null);
+      setSbtContract(null);
+    }
+  }, [wrongNetwork, networkName]);
 
   // ── Initialize contracts ──
   useEffect(() => {
@@ -129,9 +145,13 @@ export default function AdminDashboard() {
   };
 
   const txAction = async (label, fn) => {
-    const contract = electionContractRef.current; // read from ref to get the latest instance
+    const contract = electionContractRef.current;
     if (!contract) {
-      showMsg("error", "Contract not connected. Please connect MetaMask to Hardhat Local (chain 31337) and refresh.");
+      if (wrongNetworkRef.current) {
+        showMsg("error", `Wrong network (${networkNameRef.current}). Switch MetaMask to Hardhat Local (chain 31337) or Polygon Amoy (chain 80002).`);
+      } else {
+        showMsg("error", "Contract not initialised. Ensure Hardhat node is running and refresh the page.");
+      }
       return;
     }
     setLoading(label);
@@ -251,6 +271,40 @@ export default function AdminDashboard() {
           Back to Home
         </Link>
       </div>
+
+      {/* ── Wrong-network blocker ── */}
+      {wrongNetwork && (
+        <div className="mb-6 bg-orange-500/10 border border-orange-500/30 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <AlertTriangle className="w-8 h-8 text-orange-400 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-orange-300 font-semibold text-sm">Wrong Network Detected</p>
+            <p className="text-orange-400/80 text-xs mt-1">
+              MetaMask is connected to <span className="font-mono font-bold">{networkName}</span>. Contracts are deployed on{" "}
+              <span className="font-semibold">Hardhat Local (chain 31337)</span> or{" "}
+              <span className="font-semibold">Polygon Amoy (chain 80002)</span>.
+            </p>
+          </div>
+          <button
+            onClick={async () => {
+              try {
+                await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x7a69" }] });
+              } catch (e) {
+                if (e.code === 4902) {
+                  try {
+                    await window.ethereum.request({
+                      method: "wallet_addEthereumChain",
+                      params: [{ chainId: "0x7a69", chainName: "Hardhat Local", nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 }, rpcUrls: ["http://127.0.0.1:8545"] }],
+                    });
+                  } catch {}
+                }
+              }
+            }}
+            className="px-4 py-2 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-300 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap"
+          >
+            Switch to Hardhat Local
+          </button>
+        </div>
+      )}
 
       {/* Status Messages */}
       {error && (
