@@ -68,7 +68,7 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error("Init error:", err);
     }
-  }, [ELECTION_ADDRESS, SBT_ADDRESS]);
+  }, [signer, wrongNetwork, ELECTION_ADDRESS, SBT_ADDRESS]);
 
   // ── Fetch election data ──
   const fetchData = useCallback(async () => {
