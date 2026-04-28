@@ -1,6 +1,11 @@
 require("dotenv").config();
 require("@nomicfoundation/hardhat-toolbox");
 
+// Only use PRIVATE_KEY if it looks like a real 32-byte hex key (64 hex chars, optionally 0x-prefixed)
+const rawKey = process.env.PRIVATE_KEY || "";
+const validKey = /^(0x)?[0-9a-fA-F]{64}$/.test(rawKey.trim());
+const accounts = validKey ? [rawKey.trim()] : [];
+
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   solidity: {
@@ -21,7 +26,8 @@ module.exports = {
     },
     amoy: {
       url: process.env.AMOY_RPC_URL || "https://rpc-amoy.polygon.technology",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      accounts, // empty array if key not set — won't crash the node
     }
   }
 };
+
