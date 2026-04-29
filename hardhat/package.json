@@ -9,7 +9,9 @@
     "node": "hardhat node",
     "deploy:local": "hardhat run scripts/deploy.js --network localhost",
     "deploy:amoy": "hardhat run scripts/deploy.js --network amoy",
-    "setup": "hardhat compile && hardhat run scripts/deploy.js --network localhost"
+    "setup": "hardhat compile && hardhat run scripts/deploy.js --network localhost",
+    "grant-roles": "hardhat run scripts/grant-roles.js --network localhost",
+    "fund-accounts": "hardhat run scripts/fund-accounts.js --network localhost"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
